@@ -13,7 +13,7 @@
 (comment
 
   (shuffle-expr 42)
-  
+
   (shuffle-expr '(= X.a Y.b))
 
   (shuffle-expr '(AND (< a 5) (< b ~max)))
@@ -23,10 +23,7 @@
   (shuffle-expr `(unquote max))
 
   (let [max 42]
-    `(unquote ~max))
-
-
-)
+    `(unquote ~max)))
 
 (defn process-where-clause [processor expr]
   (str " WHERE " (processor expr)))
@@ -43,7 +40,7 @@
 
 (comment
   (apply process-left-join-clause shuffle-expr '(Y :ON (= X.a Y.b)))
-  
+
   ;;=> " LEFT JOIN Y ON (X.a = Y.b)"
 
   (let [LEFT-JOIN (partial process-left-join-clause shuffle-expr)]
@@ -59,10 +56,9 @@
 (comment
 
   (process-from-clause shuffle-expr 'X
-    (process-left-join-clause shuffle-expr 'Y :ON '(= X.a Y.b)))
+                       (process-left-join-clause shuffle-expr 'Y :ON '(= X.a Y.b)))
 
   ;;=> " FROM X LEFT JOIN Y ON (X.a = Y.b)"
-
 )
 
 (defn process-select-clause [processor fields & clauses]
@@ -72,24 +68,24 @@
 (comment
 
   (process-select-clause shuffle-expr
-   '[a b c]
-   (process-from-clause shuffle-expr 'X
-                        (process-left-join-clause shuffle-expr 'Y :ON '(= X.a Y.b)))
-   (process-where-clause shuffle-expr '(AND (< a 5) (< b ~max))))
+                         '[a b c]
+                         (process-from-clause shuffle-expr 'X
+                                              (process-left-join-clause shuffle-expr 'Y :ON '(= X.a Y.b)))
+                         (process-where-clause shuffle-expr '(AND (< a 5) (< b ~max))))
 
   ;;=> "SELECT a, b, c FROM X LEFT JOIN Y ON (X.a = Y.b) WHERE ((a < 5) AND (b < ?))"
 )
 
-(declare apply-syntax)
+(declare ^:dynamic *clause-map*)
+
+(defn apply-syntax [[op & args]]
+  (apply (get *clause-map* op) args))
 
 (def ^:dynamic *clause-map*
   {'SELECT    (partial process-select-clause apply-syntax)
    'FROM      (partial process-from-clause apply-syntax)
    'LEFT-JOIN (partial process-left-join-clause shuffle-expr)
    'WHERE     (partial process-where-clause shuffle-expr)})
-
-(defn apply-syntax [[op & args]]
-  (apply (get *clause-map* op) args))
 
 (defmacro SELECT [& args]
   {:query (apply-syntax (cons 'SELECT args))
@@ -105,8 +101,7 @@
 
 (comment
   (query 9)
-  
+
   ;;=> {:query "SELECT a, b, c FROM X LEFT JOIN Y ON (X.a = Y.b) WHERE ((a < 5) AND (b < ?))"
   ;;    :bindings [9]}
-  
-)
+  )
